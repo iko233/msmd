@@ -99,6 +99,18 @@ static final byte[] DigitTens = {
         } ;
 ```
 
+- sizeTable 获取字符串长度打的表
+
+jdk11中已经不再使用  由于兼容性继续保留
+
+
+> // Left here for compatibility reasons, see JDK-8143900.
+
+```java
+final static int [] sizeTable = { 9, 99, 999, 9999, 99999, 999999, 9999999,
+                                      99999999, 999999999, Integer.MAX_VALUE };
+```
+
 ## 方法
 
 ### public static String toString(int i, int raddix)  
@@ -611,6 +623,420 @@ static void getChars(int i, int index, char[] buf) {
         if (sign != 0) {
             buf [--charPos] = sign;
         }
+    }
+```
+
+### static int stringSize(int x)
+
+获取数字转字符串的长度
+
+参数:
+
+​	 x 需要转换的数
+
+源码:
+
+jdk11/16
+
+```java
+static int stringSize(int x) {   
+        int d = 1;//符号位所需长度(-)
+        if (x >= 0) {  //如果为正数反转为负数 方便计算
+            d = 0;
+            x = -x;
+        }
+        int p = -10;   //比较用 对应jdk8中的表
+        for (int i = 1; i < 10; i++) {
+            if (x > p)
+                return i + d;
+            p = 10 * p;
+        }
+        return 10 + d;
+    }
+```
+
+jdk8
+
+```java
+    static int stringSize(int x) {   //和表做比较确定长度
+        for (int i=0; ; i++)
+            if (x <= sizeTable[i])
+                return i+1;
+    }
+```
+
+### public static int parseInt(String s, int radix)
+
+字符串转int
+
+参数:
+
+​	s 输入字符
+
+​	radix 字符串s为几进制参数
+
+源码:
+
+jdk11/16
+
+```java
+public static int parseInt(String s, int radix)
+                throws NumberFormatException
+    {
+        /*
+         * WARNING: This method may be invoked early during VM initialization
+         * before IntegerCache is initialized. Care must be taken to not use
+         * the valueOf method.
+         */
+		//参数合法性判断
+        if (s == null) {  
+            throw new NumberFormatException("null");
+        }
+
+        if (radix < Character.MIN_RADIX) { 
+            throw new NumberFormatException("radix " + radix +
+                                            " less than Character.MIN_RADIX");
+        }
+
+        if (radix > Character.MAX_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " greater than Character.MAX_RADIX");
+        }
+
+        boolean negative = false;
+        int i = 0, len = s.length();
+        int limit = -Integer.MAX_VALUE;
+
+        if (len > 0) {  
+            char firstChar = s.charAt(0);
+            if (firstChar < '0') { // Possible leading "+" or "-" //第一位是否为符号位判断
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Integer.MIN_VALUE;
+                } else if (firstChar != '+') {
+                    throw NumberFormatException.forInputString(s);
+                }
+
+                if (len == 1) { // Cannot have lone "+" or "-"
+                    throw NumberFormatException.forInputString(s);
+                }
+                i++;
+            }
+            int multmin = limit / radix;   //溢出判断用
+            int result = 0;
+            while (i < len) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                int digit = Character.digit(s.charAt(i++), radix);   //字符转数字   不合法值返回-1
+                if (digit < 0 || result < multmin) {   //溢出判断
+                    throw NumberFormatException.forInputString(s);
+                }
+                result *= radix;
+                if (result < limit + digit) {  //溢出判断
+                    throw NumberFormatException.forInputString(s);
+                }
+                result -= digit;
+            }
+            return negative ? result : -result;
+        } else {
+            throw NumberFormatException.forInputString(s);
+        }
+    }
+```
+
+jdk8:
+
+````java
+public static int parseInt(String s, int radix)
+                throws NumberFormatException
+    {
+        /*
+         * WARNING: This method may be invoked early during VM initialization
+         * before IntegerCache is initialized. Care must be taken to not use
+         * the valueOf method.
+         */
+
+        if (s == null) {
+            throw new NumberFormatException("null");
+        }
+
+        if (radix < Character.MIN_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " less than Character.MIN_RADIX");
+        }
+
+        if (radix > Character.MAX_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " greater than Character.MAX_RADIX");
+        }
+
+        int result = 0;
+        boolean negative = false;
+        int i = 0, len = s.length();
+        int limit = -Integer.MAX_VALUE;
+        int multmin;
+        int digit;
+
+        if (len > 0) {
+            char firstChar = s.charAt(0);
+            if (firstChar < '0') { // Possible leading "+" or "-"
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Integer.MIN_VALUE;
+                } else if (firstChar != '+')
+                    throw NumberFormatException.forInputString(s);
+
+                if (len == 1) // Cannot have lone "+" or "-"
+                    throw NumberFormatException.forInputString(s);
+                i++;
+            }
+            multmin = limit / radix;
+            while (i < len) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                digit = Character.digit(s.charAt(i++),radix);
+                if (digit < 0) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                if (result < multmin) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result *= radix;
+                if (result < limit + digit) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result -= digit;
+            }
+        } else {
+            throw NumberFormatException.forInputString(s);
+        }
+        return negative ? result : -result;
+    }
+````
+
+### public static int parseInt(CharSequence s, int beginIndex, int endIndex, int radix)
+
+从jdk9加入,截取字符串转换进制
+
+参数:
+
+​	s 输入的字符参数
+
+​	beginIndex 开始的位置
+
+​	endIndex 截止的位置
+
+​	radix 输入参数的进制
+
+>CharSequence  字符串序列接口,  实现类有String,StringBuilder,StringBuffer
+
+源码:
+
+```java
+  public static int parseInt(CharSequence s, int beginIndex, int endIndex, int radix)
+                throws NumberFormatException {
+        
+      	//数据合法性判断
+      	s = Objects.requireNonNull(s);
+
+        if (beginIndex < 0 || beginIndex > endIndex || endIndex > s.length()) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (radix < Character.MIN_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " less than Character.MIN_RADIX");
+        }
+        if (radix > Character.MAX_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " greater than Character.MAX_RADIX");
+        }
+
+        boolean negative = false;
+        int i = beginIndex;
+        int limit = -Integer.MAX_VALUE;
+
+        if (i < endIndex) {
+            char firstChar = s.charAt(i);
+            if (firstChar < '0') { // Possible leading "+" or "-"
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Integer.MIN_VALUE;
+                } else if (firstChar != '+') {
+                    throw NumberFormatException.forCharSequence(s, beginIndex,
+                            endIndex, i);
+                }
+                i++;
+                if (i == endIndex) { // Cannot have lone "+" or "-"
+                    throw NumberFormatException.forCharSequence(s, beginIndex,
+                            endIndex, i);
+                }
+            }
+            int multmin = limit / radix;
+            int result = 0;
+            while (i < endIndex) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                int digit = Character.digit(s.charAt(i), radix);
+                if (digit < 0 || result < multmin) {
+                    throw NumberFormatException.forCharSequence(s, beginIndex,
+                            endIndex, i);
+                }
+                result *= radix;
+                if (result < limit + digit) {
+                    throw NumberFormatException.forCharSequence(s, beginIndex,
+                            endIndex, i);
+                }
+                i++;
+                result -= digit;
+            }
+            return negative ? result : -result;
+        } else {
+            throw NumberFormatException.forInputString("");
+        }
+    }
+```
+
+### public static int parseInt(String s)
+
+直接调用的 parseInt(String s ,int radix)
+
+参数:
+
+​	s 输入要转换的10进制
+
+源码:
+
+```java
+    public static int parseInt(String s) throws NumberFormatException {
+        return parseInt(s,10);
+    }
+```
+
+### public static int parseUnsignedInt(String s, int radix)
+
+无符号字符串转int
+
+参数:
+
+​	s 输入的字符串
+
+​	radix 输入参数的进制数
+
+源码:
+
+```java
+    public static int parseUnsignedInt(String s, int radix)
+                throws NumberFormatException {
+        //参数合法性判断
+        if (s == null)  {
+            throw new NumberFormatException("null");
+        }
+
+        int len = s.length();
+        if (len > 0) {
+            char firstChar = s.charAt(0);
+            if (firstChar == '-') {   //因为是无符号  所以-不可能存在
+                throw new
+                    NumberFormatException(String.format("Illegal leading minus sign " +
+                                                       "on unsigned string %s.", s));
+            } else {
+                if (len <= 5 || // Integer.MAX_VALUE in Character.MAX_RADIX is 6 digits
+                    (radix == 10 && len <= 9) ) { // Integer.MAX_VALUE in base 10 is 10 digits
+                    return parseInt(s, radix);   //可以直接做转换
+                } else {
+                    long ell = Long.parseLong(s, radix);   //通过long 的方法转换
+                    if ((ell & 0xffff_ffff_0000_0000L) == 0) {  //判断是否超过int的最大值  判断是否越界
+                        return (int) ell;
+                    } else {
+                        throw new
+                            NumberFormatException(String.format("String value %s exceeds " +
+                                                                "range of unsigned int.", s));
+                    }
+                }
+            }
+        } else {
+            throw NumberFormatException.forInputString(s, radix);
+        }
+    }
+```
+
+### public static int parseUnsignedInt(CharSequence s, int beginIndex, int endIndex, int radix)
+
+截取字符串的进制转换    从jdk9开始
+
+参数:
+
+​	s 输入的字符参数
+
+​	beginIndex 开始的位置
+
+​	endIndex 截止的位置
+
+​	radix 输入参数的进制
+
+源码:
+
+```java
+ public static int parseUnsignedInt(CharSequence s, int beginIndex, int endIndex, int radix)
+                throws NumberFormatException {
+        s = Objects.requireNonNull(s);
+
+        if (beginIndex < 0 || beginIndex > endIndex || endIndex > s.length()) {
+            throw new IndexOutOfBoundsException();
+        }
+        int start = beginIndex, len = endIndex - beginIndex;
+
+        if (len > 0) {
+            char firstChar = s.charAt(start);
+            if (firstChar == '-') {
+                throw new
+                    NumberFormatException(String.format("Illegal leading minus sign " +
+                                                       "on unsigned string %s.", s));
+            } else {
+                if (len <= 5 || // Integer.MAX_VALUE in Character.MAX_RADIX is 6 digits
+                        (radix == 10 && len <= 9)) { // Integer.MAX_VALUE in base 10 is 10 digits
+                    return parseInt(s, start, start + len, radix);
+                } else {
+                    long ell = Long.parseLong(s, start, start + len, radix);
+                    if ((ell & 0xffff_ffff_0000_0000L) == 0) {
+                        return (int) ell;
+                    } else {
+                        throw new
+                            NumberFormatException(String.format("String value %s exceeds " +
+                                                                "range of unsigned int.", s));
+                    }
+                }
+            }
+        } else {
+            throw new NumberFormatException("");
+        }
+    }
+```
+
+### public static int parseUnsignedInt(String s) throws NumberFormatException
+
+源码:
+
+```java
+    public static int parseUnsignedInt(String s) throws NumberFormatException {
+        return parseUnsignedInt(s, 10);
+    }
+```
+
+### public static Integer valueOf(String s, int radix)
+
+源码:
+
+```java
+    public static Integer valueOf(String s, int radix) throws NumberFormatException {
+        return Integer.valueOf(parseInt(s,radix));
+    }
+```
+
+### public static Integer valueOf(String s)
+
+源码:
+
+```java
+    public static Integer valueOf(String s) throws NumberFormatException {
+        return Integer.valueOf(parseInt(s, 10));
     }
 ```
 
