@@ -65,7 +65,7 @@ static final char[] digits = {
 };
 ```
 
-- DigitTens
+- DigitTens 100个数中十位的值
 
 ```java
 static final byte[] DigitTens = {
@@ -82,7 +82,7 @@ static final byte[] DigitTens = {
         } ;
 ```
 
-- DigitOnes
+- DigitOnes 100个数中个位的值
 
 ```java
  static final byte[] DigitOnes = {
@@ -467,6 +467,150 @@ private static void formatUnsignedIntUTF16(int val, int shift, byte[] buf, int o
             StringUTF16.putChar(buf, --charPos, Integer.digits[val & mask]);
             val >>>= shift;
         } while (charPos > offset);
+    }
+```
+### public static String toString(int i)
+
+转换为字符串(10进制)
+
+参数:
+
+​	i   转换的数字  
+
+源码:
+
+jdk11/16:
+
+```java
+@HotSpotIntrinsicCandidate    //hotspo有基于cpu指令的高效率执行方法
+    public static String toString(int i) {
+        int size = stringSize(i);
+        if (COMPACT_STRINGS) {
+            byte[] buf = new byte[size];
+            getChars(i, size, buf);
+            return new String(buf, LATIN1);
+        } else {
+            byte[] buf = new byte[size * 2];
+            StringUTF16.getChars(i, size, buf);
+            return new String(buf, UTF16);
+        }
+    }
+```
+
+jdk8:
+
+```java
+public static String toString(int i) {
+        if (i == Integer.MIN_VALUE)
+            return "-2147483648";
+        int size = (i < 0) ? stringSize(-i) + 1 : stringSize(i);
+        char[] buf = new char[size];
+        getChars(i, size, buf);
+        return new String(buf, true);
+    }
+```
+
+### public static String toUnsignedString(int i)
+
+转换为无符号的字符串
+
+参数:
+
+​	i 转换的数字
+
+源码:
+
+```java
+public static String toUnsignedString(int i) {
+        return Long.toString(toUnsignedLong(i));
+    }
+```
+
+
+
+### static int getChars(int i, int index, byte[] buf) {
+
+将整形转换成字符串
+
+> i 为Integer.MIN_VALUE时会溢出
+
+参数:
+
+源码:
+
+jdk11/16
+
+```java
+ static int getChars(int i, int index, byte[] buf) {
+        int q, r;
+        int charPos = index;
+	    //判断是否为负数
+        boolean negative = i < 0;
+        if (!negative) {
+            i = -i;
+        }
+		//当数为三位以上的时候   一次取两位
+        // Generate two digits per iteration
+        while (i <= -100) {
+            q = i / 100;
+            r = (q * 100) - i;
+            i = q;
+            buf[--charPos] = DigitOnes[r];
+            buf[--charPos] = DigitTens[r];
+        }
+		//最多两位数
+        // We know there are at most two digits left at this point.
+        q = i / 10;
+        r = (q * 10) - i;
+        buf[--charPos] = (byte)('0' + r);
+
+        // Whatever left is the remaining digit.
+        if (q < 0) {
+            buf[--charPos] = (byte)('0' - q);
+        }
+
+        if (negative) {
+            buf[--charPos] = (byte)'-';
+        }
+        return charPos;
+    }
+```
+
+jdk8:
+
+```java
+static void getChars(int i, int index, char[] buf) {
+        int q, r;
+        int charPos = index;
+        char sign = 0;
+
+        if (i < 0) {  
+            sign = '-';
+            i = -i;   //会溢出的原因  int范围是-2147483648~2147483647
+        }
+
+        // Generate two digits per iteration
+        while (i >= 65536) {
+            q = i / 100;
+        // really: r = i - (q * 100);
+            r = i - ((q << 6) + (q << 5) + (q << 2));
+            i = q;
+            buf [--charPos] = DigitOnes[r];
+            buf [--charPos] = DigitTens[r];
+        }
+		//快速模式
+        // Fall thru to fast mode for smaller numbers
+        // assert(i <= 65536, i);
+        for (;;) {
+            q = (i * 52429) >>> (16+3); //实际是除以10
+            r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
+            buf [--charPos] = digits [r];
+            i = q;
+            if (i == 0) break;
+        }
+        if (sign != 0) {
+            buf [--charPos] = sign;
+        }
     }
 ```
 
