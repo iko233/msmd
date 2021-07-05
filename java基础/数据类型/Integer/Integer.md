@@ -1,6 +1,8 @@
 # Integer
 
-> 继承Number抽象类  实现了序列化接口
+> 继承Number抽象类  Number类实现了序列化接口 
+>
+> Integer实现了接口Comparable<Integer>   比较用
 
 ## 构造方法
 
@@ -110,6 +112,30 @@ jdk11中已经不再使用  由于兼容性继续保留
 final static int [] sizeTable = { 9, 99, 999, 9999, 99999, 999999, 9999999,
                                       99999999, 999999999, Integer.MAX_VALUE };
 ```
+
+- value 存储对应的int的值
+
+```java
+ private final int value;
+```
+
+### Bit twiddling(比特玩弄)
+
+- SIZE  int类型的位数
+
+```java
+@Native public static final int SIZE = 32;
+```
+
+- BYTES 占几比特空间
+
+```java
+ public static final int BYTES = SIZE / Byte.SIZE;
+```
+
+
+
+-  serialVersionUID  实现序列化产生的
 
 ## 方法
 
@@ -1037,6 +1063,288 @@ public static int parseInt(String s, int radix)
 ```java
     public static Integer valueOf(String s) throws NumberFormatException {
         return Integer.valueOf(parseInt(s, 10));
+    }
+```
+
+### public static Integer valueOf(int i)
+
+参数:
+
+​	i 要转换为Integer类的int值
+
+源码:
+
+```java
+    @HotSpotIntrinsicCandidate   //hotspot有更高效率基于cpu指令的运行方式
+    public static Integer valueOf(int i) {
+        if (i >= IntegerCache.low && i <= IntegerCache.high)  //判断缓存中是否有这个对象
+            return IntegerCache.cache[i + (-IntegerCache.low)];
+        return new Integer(i);  //否则new一个
+    }
+```
+
+### public static int hashCode(int value)
+
+int的hashcode就是自己
+
+源码
+
+```java
+   public static int hashCode(int value) {
+        return value;
+    }
+```
+
+### public boolean equals(Object obj)
+
+判断值是否相等
+
+源码:
+
+```java
+    public boolean equals(Object obj) {
+        if (obj instanceof Integer) {
+            return value == ((Integer)obj).intValue();
+        }
+        return false;
+    }
+```
+
+### public static Integer getInteger(String nm, int val)
+
+尝试从系统配置中获取nm参数的变量的数值(字符串),然后进行进制解析转换为Integer包装类
+
+如果nm不存在,则返回val的值
+
+参数:
+
+​	nm 参数值
+
+​	val 如果不存在返回的数值
+
+源码:
+
+```java
+ public static Integer getInteger(String nm, int val) {
+        Integer result = getInteger(nm, null);
+        return (result == null) ? Integer.valueOf(val) : result;
+    }
+```
+
+### public static Integer getInteger(String nm, Integer val) 
+
+尝试从系统配置中获取nm参数的变量的数值(字符串),然后进行进制解析转换为Integer包装类
+
+如果nm不存在,则返回val的值
+
+参数:
+
+​	nm 参数值
+
+​	val 如果不存在返回的数值
+
+源码:
+
+```java
+ public static Integer getInteger(String nm, Integer val) {
+        String v = null;
+        try {
+            v = System.getProperty(nm);   //从系统中获取参数
+        } catch (IllegalArgumentException | NullPointerException e) {
+        }
+        if (v != null) {
+            try {
+                return Integer.decode(v);   //进制转化
+            } catch (NumberFormatException e) {
+            }
+        }
+        return val;   //nm参数不存在的时候直接返回val的值
+    }
+```
+
+### public static Integer decode(String nm)
+
+对参数做进制转化,默认为10进制,支持输入参数为16进制或者8进制
+
+参数:
+
+​	nm 16/10/8进制字符串
+
+源码:
+
+```java
+    public static Integer decode(String nm) throws NumberFormatException {
+        int radix = 10;   //进制数
+        int index = 0;   //读取字符串位置
+        boolean negative = false;  //是否为负数
+        Integer result; //返回的结果
+		//判断参数是否合法
+        if (nm.isEmpty())
+            throw new NumberFormatException("Zero length string");
+        char firstChar = nm.charAt(0);
+        // Handle sign, if present
+        if (firstChar == '-') {
+            negative = true;
+            index++;
+        } else if (firstChar == '+')
+            index++;
+
+        // Handle radix specifier, if present
+        if (nm.startsWith("0x", index) || nm.startsWith("0X", index)) {
+            index += 2;
+            radix = 16;
+        }
+        else if (nm.startsWith("#", index)) {
+            index ++;
+            radix = 16;
+        }
+        else if (nm.startsWith("0", index) && nm.length() > 1 + index) {
+            index ++;
+            radix = 8;
+        }
+
+        if (nm.startsWith("-", index) || nm.startsWith("+", index))
+            throw new NumberFormatException("Sign character in wrong position");
+
+        try {
+            result = Integer.valueOf(nm.substring(index), radix);
+            result = negative ? Integer.valueOf(-result.intValue()) : result;
+        } catch (NumberFormatException e) {
+            // If number is Integer.MIN_VALUE, we'll end up here. The next line
+            // handles this case, and causes any genuine format error to be
+            // rethrown.
+            //Integer.MIN_VALUE会异常
+            String constant = negative ? ("-" + nm.substring(index))
+                                       : nm.substring(index);
+            result = Integer.valueOf(constant, radix);
+        }
+        return result;
+    }
+```
+
+### public int compareTo(Integer anotherInteger)
+
+继承比较接口而来的
+
+源码:
+
+```java
+    public int compareTo(Integer anotherInteger) {
+        return compare(this.value, anotherInteger.value);
+    }
+
+```
+
+### public static int compare(int x, int y)
+
+源码:
+
+```java
+    public static int compare(int x, int y) {
+        return (x < y) ? -1 : ((x == y) ? 0 : 1);
+    }
+
+```
+
+### public static int compareUnsigned(int x, int y)
+
+通过==与Integer.MIN_VALUE相加==再比较实现的  防止溢出
+
+源码:
+
+```java
+public static int compareUnsigned(int x, int y) {
+        return compare(x + MIN_VALUE, y + MIN_VALUE);
+   }
+```
+
+### public static long toUnsignedLong(int x)
+
+一个数值跟根据二进制转换为long类型
+
+源码:
+
+```java
+public static long toUnsignedLong(int x) {
+        return ((long) x) & 0xffffffffL;  //0xffffffffL是为了让符号位当正常数值来处理
+    }
+```
+
+### public static int divideUnsigned(int dividend, int divisor)
+
+无符号除法
+
+源码:
+
+```java
+ public static int divideUnsigned(int dividend, int divisor) {
+        // In lieu of tricky code, for now just use long arithmetic.
+        return (int)(toUnsignedLong(dividend) / toUnsignedLong(divisor));
+    }
+```
+
+### public static int remainderUnsigned(int dividend, int divisor)
+
+无符号取余
+
+源码:
+
+ ```java
+ public static int remainderUnsigned(int dividend, int divisor) {
+         // In lieu of tricky code, for now just use long arithmetic.
+         return (int)(toUnsignedLong(dividend) % toUnsignedLong(divisor));
+     }
+ ```
+
+### public static int highestOneBit(int i)
+
+
+
+## 内部类
+
+### IntegerCache
+
+原理:
+
+预先把==-128到127(可通过vm调整)的数预先生成提高new对象的效率
+
+源码:
+
+```java
+ private static class IntegerCache {
+        static final int low = -128;//最小值
+        static final int high;//最大值
+        static final Integer cache[];//存储预先new的对象的数组
+
+        static {
+            // high value may be configured by property
+            int h = 127;//默认最大值
+            //从配置中读取最大值
+            String integerCacheHighPropValue =
+                VM.getSavedProperty("java.lang.Integer.IntegerCache.high");
+            if (integerCacheHighPropValue != null) {
+                try {
+                    //最大值最小为127
+                    int i = parseInt(integerCacheHighPropValue);
+                    i = Math.max(i, 127);
+                    // Maximum array size is Integer.MAX_VALUE
+                    h = Math.min(i, Integer.MAX_VALUE - (-low) -1);//不超过最大长度Integer.MAX_VALUE
+                } catch( NumberFormatException nfe) {
+                    // If the property cannot be parsed into an int, ignore it.
+                }
+            }
+            high = h;
+			//创建存储数组  并生成对应对象
+            cache = new Integer[(high - low) + 1];
+            int j = low;
+            for(int k = 0; k < cache.length; k++)
+                cache[k] = new Integer(j++);
+
+            // range [-128, 127] must be interned (JLS7 5.1.7)
+            assert IntegerCache.high >= 127;
+        }
+
+        private IntegerCache() {}
     }
 ```
 
