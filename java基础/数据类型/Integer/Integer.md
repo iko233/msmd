@@ -4,6 +4,8 @@
 >
 > Integer实现了接口Comparable<Integer>   比较用
 
+![image-20210706051158015](https://raw.githubusercontent.com/bitchigo/msImg/main/20210706051158.png)
+
 ## 构造方法
 
 > 从jdk9已经不建议使用  建议使用静态工厂方法valueOf ( int ) 
