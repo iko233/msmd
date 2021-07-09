@@ -29,7 +29,7 @@
     public static final Class<Long>     TYPE = (Class<Long>) Class.getPrimitiveClass("long");
 ```
 
-#  digits
+## digits
 
 进制转化用到的表
 
@@ -43,6 +43,36 @@
         'u' , 'v' , 'w' , 'x' , 'y' , 'z'
     };
 ```
+
+## value
+
+存储Long对应的long的数值
+
+```java
+private final long value;
+```
+
+# 构造方法
+
+## public Long(long value)
+
+```java
+  @Deprecated(since="9")
+    public Long(long value) {
+        this.value = value;
+    }
+```
+
+## public Long(String s)
+
+```java
+ @Deprecated(since="9")
+    public Long(String s) throws NumberFormatException {
+        this.value = parseLong(s, 10);
+    }
+```
+
+
 
 # 方法
 
@@ -476,12 +506,404 @@ static int getChars(long i, int index, byte[] buf) {
     }
 ```
 
+## static int stringSize(long x)
+
+jdk8只能处理正数
+
+源码:
+
+jdk11:
+
+```java
+static int stringSize(long x) {
+        int d = 1;
+        if (x >= 0) {
+            d = 0;
+            x = -x;
+        }
+        long p = -10;
+        for (int i = 1; i < 19; i++) {
+            if (x > p)
+                return i + d;
+            p = 10 * p;
+        }
+        return 19 + d;
+    }
+```
+
 jdk8:
 
 ```java
+   static int stringSize(long x) {
+        long p = 10;
+        for (int i=1; i<19; i++) {
+            if (x < p)
+                return i;
+            p = 10*p;
+        }
+        return 19;
+    }
+```
+
+## public static long parseLong(String s, int radix)
+
+参数:
+
+​	s 要转换的参数化
+
+​	radix	s为几进制数
+
+源码:
+
+jdk11:
+
+```java
+  public static long parseLong(String s, int radix)
+              throws NumberFormatException
+    {
+      	//判断参数合法性
+        if (s == null) {
+            throw new NumberFormatException("null");
+        }
+
+        if (radix < Character.MIN_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " less than Character.MIN_RADIX");
+        }
+        if (radix > Character.MAX_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " greater than Character.MAX_RADIX");
+        }
+
+        boolean negative = false;
+        int i = 0, len = s.length();
+        long limit = -Long.MAX_VALUE;
+
+        if (len > 0) {	
+            char firstChar = s.charAt(0);
+            if (firstChar < '0') { // Possible leading "+" or "-"
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Long.MIN_VALUE;
+                } else if (firstChar != '+') {
+                    throw NumberFormatException.forInputString(s);
+                }
+				//不能只有正负号
+                if (len == 1) { // Cannot have lone "+" or "-"
+                    throw NumberFormatException.forInputString(s);
+                }
+                i++;
+            }
+            //开始做转换
+            long multmin = limit / radix;
+            long result = 0;
+            while (i < len) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                int digit = Character.digit(s.charAt(i++),radix); //字符转数字
+                if (digit < 0 || result < multmin) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result *= radix;
+                if (result < limit + digit) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result -= digit;
+            }
+            return negative ? result : -result;
+        } else {//空字符串情况
+            throw NumberFormatException.forInputString(s);
+        }
+    }
+```
+
+jdk8:
+
+```java
+    public static long parseLong(String s, int radix)
+              throws NumberFormatException
+    {
+        if (s == null) {
+            throw new NumberFormatException("null");
+        }
+
+        if (radix < Character.MIN_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " less than Character.MIN_RADIX");
+        }
+        if (radix > Character.MAX_RADIX) {
+            throw new NumberFormatException("radix " + radix +
+                                            " greater than Character.MAX_RADIX");
+        }
+
+        long result = 0;
+        boolean negative = false;
+        int i = 0, len = s.length();
+        long limit = -Long.MAX_VALUE;
+        long multmin;
+        int digit;
+
+        if (len > 0) {
+            char firstChar = s.charAt(0);
+            if (firstChar < '0') { // Possible leading "+" or "-"
+                if (firstChar == '-') {
+                    negative = true;
+                    limit = Long.MIN_VALUE;
+                } else if (firstChar != '+')
+                    throw NumberFormatException.forInputString(s);
+
+                if (len == 1) // Cannot have lone "+" or "-"
+                    throw NumberFormatException.forInputString(s);
+                i++;
+            }
+            multmin = limit / radix;
+            while (i < len) {
+                // Accumulating negatively avoids surprises near MAX_VALUE
+                digit = Character.digit(s.charAt(i++),radix);
+                if (digit < 0) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                if (result < multmin) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result *= radix;
+                if (result < limit + digit) {
+                    throw NumberFormatException.forInputString(s);
+                }
+                result -= digit;
+            }
+        } else {
+            throw NumberFormatException.forInputString(s);
+        }
+        return negative ? result : -result;
+```
+
+## public static long parseLong(String s)
+
+源码:
+
+```java
+    public static long parseLong(String s) throws NumberFormatException {
+        return parseLong(s, 10);
+    }
+```
+
+## public static long parseUnsignedLong(String s, int radix)
+
+源码:
+
+```java
+ public static long parseUnsignedLong(String s, int radix)
+                throws NumberFormatException {
+        //参数合法性判断
+    	if (s == null)  {
+            throw new NumberFormatException("null");
+        }
+
+        int len = s.length();
+        if (len > 0) {
+            //因为是无符号转换  所以不可能存在负数
+            char firstChar = s.charAt(0);
+            if (firstChar == '-') {
+                throw new
+                    NumberFormatException(String.format("Illegal leading minus sign " +
+                                                       "on unsigned string %s.", s));
+            } else {//不能存在符号问题 直接转换
+                if (len <= 12 || // Long.MAX_VALUE in Character.MAX_RADIX is 13 digits
+                    (radix == 10 && len <= 18) ) { // Long.MAX_VALUE in base 10 is 19 digits
+                    return parseLong(s, radix);
+                }
+
+                // No need for range checks on len due to testing above.
+                long first = parseLong(s, 0, len - 1, radix);
+                int second = Character.digit(s.charAt(len - 1), radix);
+                if (second < 0) {
+                    throw new NumberFormatException("Bad digit at end of " + s);
+                }
+                long result = first * radix + second;
+
+                /*
+                 * Test leftmost bits of multiprecision extension of first*radix
+                 * for overflow. The number of bits needed is defined by
+                 * GUARD_BIT = ceil(log2(Character.MAX_RADIX)) + 1 = 7. Then
+                 * int guard = radix*(int)(first >>> (64 - GUARD_BIT)) and
+                 * overflow is tested by splitting guard in the ranges
+                 * guard < 92, 92 <= guard < 128, and 128 <= guard, where
+                 * 92 = 128 - Character.MAX_RADIX. Note that guard cannot take
+                 * on a value which does not include a prime factor in the legal
+                 * radix range.
+                 */
+                int guard = radix * (int) (first >>> 57);
+                if (guard >= 128 ||
+                    (result >= 0 && guard >= 128 - Character.MAX_RADIX)) {
+                    /*
+                     * For purposes of exposition, the programmatic statements
+                     * below should be taken to be multi-precision, i.e., not
+                     * subject to overflow.
+                     *
+                     * A) Condition guard >= 128:
+                     * If guard >= 128 then first*radix >= 2^7 * 2^57 = 2^64
+                     * hence always overflow.
+                     *
+                     * B) Condition guard < 92:
+                     * Define left7 = first >>> 57.
+                     * Given first = (left7 * 2^57) + (first & (2^57 - 1)) then
+                     * result <= (radix*left7)*2^57 + radix*(2^57 - 1) + second.
+                     * Thus if radix*left7 < 92, radix <= 36, and second < 36,
+                     * then result < 92*2^57 + 36*(2^57 - 1) + 36 = 2^64 hence
+                     * never overflow.
+                     *
+                     * C) Condition 92 <= guard < 128:
+                     * first*radix + second >= radix*left7*2^57 + second
+                     * so that first*radix + second >= 92*2^57 + 0 > 2^63
+                     *
+                     * D) Condition guard < 128:
+                     * radix*first <= (radix*left7) * 2^57 + radix*(2^57 - 1)
+                     * so
+                     * radix*first + second <= (radix*left7) * 2^57 + radix*(2^57 - 1) + 36
+                     * thus
+                     * radix*first + second < 128 * 2^57 + 36*2^57 - radix + 36
+                     * whence
+                     * radix*first + second < 2^64 + 2^6*2^57 = 2^64 + 2^63
+                     *
+                     * E) Conditions C, D, and result >= 0:
+                     * C and D combined imply the mathematical result
+                     * 2^63 < first*radix + second < 2^64 + 2^63. The lower
+                     * bound is therefore negative as a signed long, but the
+                     * upper bound is too small to overflow again after the
+                     * signed long overflows to positive above 2^64 - 1. Hence
+                     * result >= 0 implies overflow given C and D.
+                     */
+                    throw new NumberFormatException(String.format("String value %s exceeds " +
+                                                                  "range of unsigned long.", s));
+                }
+                return result;
+            }
+        } else {
+            throw NumberFormatException.forInputString(s);
+        }
+    }
+```
+
+## public static long parseUnsignedLong(String s)
+
+源码:
+
+```java
+    public static long parseUnsignedLong(String s) throws NumberFormatException {
+        return parseUnsignedLong(s, 10);
+    }
+
+```
+
+## public static Long valueOf(String s, int radix)
+
+源码:
+
+```java
+    public static Long valueOf(String s, int radix) throws NumberFormatException {
+        return Long.valueOf(parseLong(s, radix));
+    }
+```
+
+## public static Long valueOf(long l)
+
+源码:
+
+```java
+    @HotSpotIntrinsicCandidate
+    public static Long valueOf(long l) {
+        final int offset = 128;  //数组是从0开始的   偏移量
+        if (l >= -128 && l <= 127) { // will cache   //命中缓存
+            return LongCache.cache[(int)l + offset];
+        }
+        return new Long(l);
+    }
+```
+
+## public static Long decode(String nm)
+
+源码:
+
+```java
+ public static Long decode(String nm) throws NumberFormatException {
+        int radix = 10;
+        int index = 0;
+        boolean negative = false;
+        Long result;
+		//判断数据合法性
+        if (nm.isEmpty())
+            throw new NumberFormatException("Zero length string");
+        char firstChar = nm.charAt(0);
+        // Handle sign, if present
+     	//判断正负号
+        if (firstChar == '-') {
+            negative = true;
+            index++;
+        } else if (firstChar == '+')
+            index++;
+		//判断进制头
+        // Handle radix specifier, if present
+        if (nm.startsWith("0x", index) || nm.startsWith("0X", index)) {
+            index += 2;
+            radix = 16;
+        }
+        else if (nm.startsWith("#", index)) {
+            index ++;
+            radix = 16;
+        }
+        else if (nm.startsWith("0", index) && nm.length() > 1 + index) {
+            index ++;
+            radix = 8;
+        }
+		//判断合法性
+        if (nm.startsWith("-", index) || nm.startsWith("+", index))
+            throw new NumberFormatException("Sign character in wrong position");
+		//转换
+        try {
+            result = Long.valueOf(nm.substring(index), radix);
+            result = negative ? Long.valueOf(-result.longValue()) : result;
+        } catch (NumberFormatException e) {
+            // If number is Long.MIN_VALUE, we'll end up here. The next line
+            // handles this case, and causes any genuine format error to be
+            // rethrown.
+            String constant = negative ? ("-" + nm.substring(index))
+                                       : nm.substring(index);
+            result = Long.valueOf(constant, radix);
+        }
+        return result;
+    }
+```
+
+## public static int hashCode(long value)
+
+源码:
+
+```java
+    public static int hashCode(long value) {
+        return (int)(value ^ (value >>> 32));
+    }
 ```
 
 
 
+# 内部类
 
+## private static class LongCache
+
+源码:
+
+```java
+    private static class LongCache {
+        private LongCache(){}
+
+        static final Long cache[] = new Long[-(-128) + 127 + 1];
+
+        static {
+            for(int i = 0; i < cache.length; i++)
+                cache[i] = new Long(i - 128);
+        }
+    }
+```
+
+生成-128到127之间的Long类型参数
 
