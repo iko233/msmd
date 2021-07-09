@@ -4499,7 +4499,111 @@ private static final long serialVersionUID = 3786198910865385080L;
     }
 ```
 
+## public int hashCode()
 
+源码:
+
+```java
+  @Override
+    public int hashCode() {
+        return Character.hashCode(value);
+    }
+```
+
+## public boolean equals(Object obj) 
+
+源码:
+
+```java
+  public boolean equals(Object obj) {
+        if (obj instanceof Character) {
+            return value == ((Character)obj).charValue();
+        }
+        return false;
+    }
+```
+
+## public String toString()
+
+Character转数组
+
+源码:
+
+```java
+  public String toString() {
+        char buf[] = {value};
+        return String.valueOf(buf);
+    }
+```
+
+## public static String toString(char c)
+
+char转数组
+
+源码:
+
+```java
+ public static String toString(char c) {
+        return String.valueOf(c);
+    }
+```
+
+## public static String toString(int codePoint)
+
+codepoint 转字符串   jdk11开始
+
+源码:
+
+```java
+    public static String toString(int codePoint) {
+        return String.valueOfCodePoint(codePoint);
+    }
+
+```
+
+## public static boolean isValidCodePoint(int codePoint)
+
+判断codepoint是否在合法范围
+
+源码:
+
+```java
+ public static boolean isValidCodePoint(int codePoint) {
+        // Optimized form of:
+        //     codePoint >= MIN_CODE_POINT && codePoint <= MAX_CODE_POINT
+        int plane = codePoint >>> 16;  //范围缩小变成int类型 加快计算速度
+        return plane < ((MAX_CODE_POINT + 1) >>> 16);
+    }
+```
+
+## public static boolean isBmpCodePoint(int codePoint)
+
+是否可用单个char表示这个codepoint
+
+源码:
+
+```java
+public static boolean isBmpCodePoint(int codePoint) {
+        return codePoint >>> 16 == 0;
+        // Optimized form of:
+        //     codePoint >= MIN_VALUE && codePoint <= MAX_VALUE
+        // We consistently use logical shift (>>>) to facilitate
+        // additional runtime optimizations.
+    }
+```
+
+## public static boolean isSupplementaryCodePoint(int codePoint)
+
+是否为扩展字符(是否用单char能够表示)
+
+源码:
+
+```java
+public static boolean isSupplementaryCodePoint(int codePoint) {
+        return codePoint >= MIN_SUPPLEMENTARY_CODE_POINT
+            && codePoint <  MAX_CODE_POINT + 1;
+    }
+```
 
 # 内部类
 
