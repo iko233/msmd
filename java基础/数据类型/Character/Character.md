@@ -4605,6 +4605,89 @@ public static boolean isSupplementaryCodePoint(int codePoint) {
     }
 ```
 
+## public static boolean isHighSurrogate(char ch)
+
+是否为代理字符的高位代码
+
+源码:
+
+```java
+public static boolean isHighSurrogate(char ch) {
+        // Help VM constant-fold; MAX_HIGH_SURROGATE + 1 == MIN_LOW_SURROGATE
+        return ch >= MIN_HIGH_SURROGATE && ch < (MAX_HIGH_SURROGATE + 1);
+    }
+```
+
+> 代理字符不代表任何字符
+
+## public static boolean isLowSurrogate(char ch)
+
+是否为代理字符的低位字符
+
+源码:
+
+```java
+public static boolean isLowSurrogate(char ch) {
+        return ch >= MIN_LOW_SURROGATE && ch < (MAX_LOW_SURROGATE + 1);
+    }
+```
+
+## public static boolean isSurrogate(char ch)
+
+是否为代理字符
+
+源码:
+
+```java
+    public static boolean isSurrogate(char ch) {
+        return ch >= MIN_SURROGATE && ch < (MAX_SURROGATE + 1);
+    }
+```
+
+## public static boolean isSurrogatePair(char high, char low)
+
+是否为代理字符对
+
+源码:
+
+```java
+ public static boolean isSurrogatePair(char high, char low) {
+        return isHighSurrogate(high) && isLowSurrogate(low);
+    }
+```
+
+## public static int charCount(int codePoint)
+
+codepoint用几个字符表示
+
+源码:
+
+```java
+public static int charCount(int codePoint) {
+        return codePoint >= MIN_SUPPLEMENTARY_CODE_POINT ? 2 : 1;
+    }
+```
+
+## public static int toCodePoint(char high, char low)
+
+转换为codepoint
+
+源码:
+
+```java
+ public static int toCodePoint(char high, char low) {
+        // Optimized form of:
+        // return ((high - MIN_HIGH_SURROGATE) << 10)
+        //         + (low - MIN_LOW_SURROGATE)
+        //         + MIN_SUPPLEMENTARY_CODE_POINT;
+        return ((high << 10) + low) + (MIN_SUPPLEMENTARY_CODE_POINT
+                                       - (MIN_HIGH_SURROGATE << 10)
+                                       - MIN_LOW_SURROGATE);
+    }
+```
+
+
+
 # 内部类
 
 ## public static class Subset
