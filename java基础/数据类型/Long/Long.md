@@ -884,7 +884,142 @@ jdk8:
     }
 ```
 
+## public boolean equals(Object obj)
 
+源码:
+
+```java
+    public boolean equals(Object obj) {
+        if (obj instanceof Long) {
+            return value == ((Long)obj).longValue();
+        }
+        return false;
+    }
+```
+
+## public static Long getLong(String nm)
+
+从系统参数中获取值
+
+源码:
+
+```java
+    public static Long getLong(String nm) {
+        return getLong(nm, null);
+    }
+
+```
+
+
+
+## public static Long getLong(String nm, long val)
+
+源码:
+
+```java
+ public static Long getLong(String nm, long val) {
+        Long result = Long.getLong(nm, null);
+        return (result == null) ? Long.valueOf(val) : result;
+    }
+```
+
+## public static Long getLong(String nm, Long val) 
+
+源码:
+
+```java
+public static Long getLong(String nm, Long val) {
+        String v = null;
+        try {
+            v = System.getProperty(nm);
+        } catch (IllegalArgumentException | NullPointerException e) {
+        }
+        if (v != null) {
+            try {
+                return Long.decode(v);
+            } catch (NumberFormatException e) {
+            }
+        }
+        return val;
+    }
+```
+
+## public int compareTo(Long anotherLong)
+
+源码:
+
+```java
+public int compareTo(Long anotherLong) {
+        return compare(this.value, anotherLong.value);
+    }
+```
+
+## public static int compare(long x, long y)
+
+源码:
+
+```java
+ public static int compare(long x, long y) {
+        return (x < y) ? -1 : ((x == y) ? 0 : 1);
+    }
+```
+
+## public static int compareUnsigned(long x, long y)
+
+源码:
+
+```java
+public static int compareUnsigned(long x, long y) {
+        return compare(x + MIN_VALUE, y + MIN_VALUE);
+    }
+```
+
+## public static long divideUnsigned(long dividend, long divisor)
+
+无符号除法
+
+源码:
+
+```java
+    public static long divideUnsigned(long dividend, long divisor) {
+        if (divisor < 0L) { // signed comparison
+            // Answer must be 0 or 1 depending on relative magnitude
+            // of dividend and divisor.
+            return (compareUnsigned(dividend, divisor)) < 0 ? 0L :1L;
+        }
+
+        if (dividend > 0) //  Both inputs non-negative
+            return dividend/divisor;
+        else {
+            /*
+             * For simple code, leveraging BigInteger.  Longer and faster
+             * code written directly in terms of operations on longs is
+             * possible; see "Hacker's Delight" for divide and remainder
+             * algorithms.
+             */
+            return toUnsignedBigInteger(dividend).
+                divide(toUnsignedBigInteger(divisor)).longValue();
+        }
+    }
+```
+
+## public static long remainderUnsigned(long dividend, long divisor)
+
+源码:
+
+```java
+public static long remainderUnsigned(long dividend, long divisor) {
+        if (dividend > 0 && divisor > 0) { // signed comparisons
+            return dividend % divisor;
+        } else {
+            if (compareUnsigned(dividend, divisor) < 0) // Avoid explicit check for 0 divisor
+                return dividend;
+            else
+                return toUnsignedBigInteger(dividend).
+                    remainder(toUnsignedBigInteger(divisor)).longValue();
+        }
+    }
+```
 
 # 内部类
 
