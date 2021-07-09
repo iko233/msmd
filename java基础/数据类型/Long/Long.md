@@ -329,12 +329,14 @@ static String toUnsignedString0(long val, int shift) {
 
 ​	lsb
 
-​	msb
+​	msb 最高有效位
+
+​	lsb 最低有效位
 
 源码:
 
 ```java
-static String fastUUID(long lsb, long msb) {
+static String fastUUID(long lsb, long msb) { 
         if (COMPACT_STRINGS) {
             byte[] buf = new byte[36];
             formatUnsignedLong0(lsb,        4, buf, 24, 12);
@@ -367,4 +369,119 @@ static String fastUUID(long lsb, long msb) {
         }
     }
 ```
+
+ ## public static String toString(long i)
+
+源码:
+
+jdk11:
+
+```java
+  public static String toString(long i) {
+        int size = stringSize(i);  //获取字符串长度
+        if (COMPACT_STRINGS) {
+            byte[] buf = new byte[size];  //生成数组长度
+            getChars(i, size, buf);  //获取每一位字符
+            return new String(buf, LATIN1);  //生成字符串
+        } else {
+            byte[] buf = new byte[size * 2];  
+            StringUTF16.getChars(i, size, buf);
+            return new String(buf, UTF16);
+        }
+    }
+```
+
+jdk8:
+
+```java
+    public static String toString(long i) {
+        if (i == Long.MIN_VALUE)
+            return "-9223372036854775808";
+        int size = (i < 0) ? stringSize(-i) + 1 : stringSize(i);  //jdk8的stringSize不能够判断负数
+        char[] buf = new char[size];
+        getChars(i, size, buf);
+        return new String(buf, true);
+    }
+```
+
+## public static String toUnsignedString(long i)
+
+源码:
+
+```java
+ public static String toUnsignedString(long i) {
+        return toUnsignedString(i, 10);
+    }
+```
+
+## static int getChars(long i, int index, byte[] buf)
+
+参数:
+
+​	i	转换的参数
+
+​	index 最低字符位置  为了从数组的右到左填充
+
+​	buf 存储用数组
+
+源码:
+
+jdk11:
+
+```java
+static int getChars(long i, int index, byte[] buf) {
+        long q;
+        int r;
+        int charPos = index;
+
+        boolean negative = (i < 0);
+        if (!negative) {  //是否为负数
+            i = -i;
+        }
+
+        // Get 2 digits/iteration using longs until quotient fits into an int
+        while (i <= Integer.MIN_VALUE) {	//除100快速得每一位数值
+            q = i / 100;
+            r = (int)((q * 100) - i);
+            i = q;
+            buf[--charPos] = Integer.DigitOnes[r];
+            buf[--charPos] = Integer.DigitTens[r];
+        }
+
+        // Get 2 digits/iteration using ints
+        int q2;
+        int i2 = (int)i;
+        while (i2 <= -100) {	//范围为int了	用int参数计算  加快速度
+            q2 = i2 / 100;
+            r  = (q2 * 100) - i2;
+            i2 = q2;
+            buf[--charPos] = Integer.DigitOnes[r];
+            buf[--charPos] = Integer.DigitTens[r];
+        }
+
+        // We know there are at most two digits left at this point.
+        q2 = i2 / 10;	//处理小于100情况
+        r  = (q2 * 10) - i2;
+        buf[--charPos] = (byte)('0' + r);
+
+        // Whatever left is the remaining digit.
+        if (q2 < 0) {
+            buf[--charPos] = (byte)('0' - q2);
+        }
+
+        if (negative) {  //添加符号
+            buf[--charPos] = (byte)'-';
+        }
+        return charPos;
+    }
+```
+
+jdk8:
+
+```java
+```
+
+
+
+
 
