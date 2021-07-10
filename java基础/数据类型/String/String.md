@@ -496,8 +496,200 @@ public char charAt(int index) {
     }
 ```
 
+​	深入:
+
+​		StringLatin1
+
+```java
+ public static char charAt(byte[] value, int index) {
+        if (index < 0 || index >= value.length) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        return (char)(value[index] & 0xff);	//0xff获取低8位
+    }
+```
+
+​		StringUTF16
+
+```java
+    public static char charAt(byte[] value, int index) {
+        checkIndex(index, value);	//判断数据合法性
+        return getChar(value, index);
+    }
+```
+
 jdk8:
 
 ```java
+ public char charAt(int index) {
+        if ((index < 0) || (index >= value.length)) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        return value[index];
+    }
+```
+
+## public int codePointBefore(int index) 
+
+返回index前一个字符的codepoint
+
+源码:
+
+jdk11:
+
+```java
+    public int codePointBefore(int index) {
+        //修正位置
+        int i = index - 1;
+        //合法性判断
+        if (i < 0 || i >= length()) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        if (isLatin1()) { //是否为Latin1编码 并且开启了字符串压缩
+            return (value[i] & 0xff);
+        }
+        return StringUTF16.codePointBefore(value, index);
+    }
+```
+
+jdk8:
+
+```java
+    public int codePointBefore(int index) {
+        int i = index - 1;
+        if ((i < 0) || (i >= value.length)) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        return Character.codePointBeforeImpl(value, index, 0);
+    }
+```
+
+## public int codePointCount(int beginIndex, int endIndex)
+
+返回这个范围的codepoint的数量
+
+源码:
+
+jdk11:
+
+```java
+ public int codePointCount(int beginIndex, int endIndex) {
+        //数据合法性判断
+     	if (beginIndex < 0 || beginIndex > endIndex ||
+            endIndex > length()) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (isLatin1()) {  //因为这种编码只要一个字符  直接减法即可
+            return endIndex - beginIndex;
+        }
+        return StringUTF16.codePointCount(value, beginIndex, endIndex);
+    }
+```
+
+jdk8:
+
+```java
+    public int codePointCount(int beginIndex, int endIndex) {
+        //数据合法性判断
+        if (beginIndex < 0 || endIndex > value.length || beginIndex > endIndex) {
+            throw new IndexOutOfBoundsException();
+        }
+        return Character.codePointCountImpl(value, beginIndex, endIndex - beginIndex);
+    }
+```
+
+> length()>=codePointCount(0,string.length())
+
+## public int offsetByCodePoints(int index, int codePointOffset) 
+
+源码:
+
+jdk11:
+
+```java
+    public int offsetByCodePoints(int index, int codePointOffset) {
+       	//数据合法性判断
+        if (index < 0 || index > length()) {
+            throw new IndexOutOfBoundsException();
+        }
+        return Character.offsetByCodePoints(this, index, codePointOffset);
+    }
+```
+
+jdk8:
+
+```java
+    public int offsetByCodePoints(int index, int codePointOffset) {
+        if (index < 0 || index > value.length) {
+            throw new IndexOutOfBoundsException();
+        }
+        return Character.offsetByCodePointsImpl(value, 0, value.length,
+                index, codePointOffset);
+    }
+```
+
+## void getChars(char dst[], int dstBegin)
+
+参数:
+
+​	dst 存储用数组
+
+​	dst 存储开始位置
+
+源码:
+
+jdk8:
+
+```java
+ void getChars(char dst[], int dstBegin) {
+        System.arraycopy(value, 0, dst, dstBegin, value.length);
+    }
+```
+
+## public void getChars(int srcBegin, int srcEnd, char dst[], int dstBegin)
+
+参数:
+
+​	srcBegin 起始位置
+
+​	srcEnd 结束位置
+
+​	dst 存储用数组
+
+​	dstBegin	存储数组的起始位置
+
+源码:
+
+jdk11:
+
+```java
+ public void getChars(int srcBegin, int srcEnd, char dst[], int dstBegin) {
+       //数据合法性
+     	checkBoundsBeginEnd(srcBegin, srcEnd, length());
+        checkBoundsOffCount(dstBegin, srcEnd - srcBegin, dst.length);
+        if (isLatin1()) {
+            StringLatin1.getChars(value, srcBegin, srcEnd, dst, dstBegin); //遍历数组存储
+        } else {
+            StringUTF16.getChars(value, srcBegin, srcEnd, dst, dstBegin);//遍历
+        }
+```
+
+jdk8:
+
+```java
+    public void getChars(int srcBegin, int srcEnd, char dst[], int dstBegin) {
+        //数据合法性
+        if (srcBegin < 0) {
+            throw new StringIndexOutOfBoundsException(srcBegin);
+        }
+        if (srcEnd > value.length) {
+            throw new StringIndexOutOfBoundsException(srcEnd);
+        }
+        if (srcBegin > srcEnd) {
+            throw new StringIndexOutOfBoundsException(srcEnd - srcBegin);
+        }
+        //复制
+        System.arraycopy(value, srcBegin, dst, dstBegin, srcEnd - srcBegin);
+    }
 ```
 
