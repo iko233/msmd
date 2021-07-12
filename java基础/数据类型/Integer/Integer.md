@@ -1300,7 +1300,126 @@ public static long toUnsignedLong(int x) {
 
 ### public static int highestOneBit(int i)
 
+获得最高位为1的数值
 
+源码:
+
+jdk11:
+
+```java
+public static int highestOneBit(int i) {
+        return i & (MIN_VALUE >>> numberOfLeadingZeros(i));
+    }
+```
+
+MIN_VALUE(10000000000000000000000000000000) 右移获取最高位
+
+jdk8:
+
+```java
+  public static int highestOneBit(int i) {
+        // HD, Figure 3-1
+        i |= (i >>  1);
+        i |= (i >>  2);
+        i |= (i >>  4);
+        i |= (i >>  8);
+        i |= (i >> 16);
+        return i - (i >>> 1);
+    }
+```
+
+将i下面的除最高位填充为1  然后作差 
+
+## public static int lowestOneBit(int i) 
+
+源码:
+
+```java
+public static int lowestOneBit(int i) {
+        // HD, Section 2-1
+        return i & -i;
+    }
+```
+
+## public static int numberOfLeadingZeros(int i)
+
+获得这个数二进制前导0的个数
+
+源码:
+
+jdk11:
+
+```java
+  @HotSpotIntrinsicCandidate
+    public static int numberOfLeadingZeros(int i) {
+        // HD, Count leading 0's
+        if (i <= 0)  //特殊符号排除
+            return i == 0 ? 32 : 0;   //因为负数符号位为最高位  所以前导0为0个
+        int n = 31;
+        if (i >= 1 << 16) { n -= 16; i >>>= 16; }  //大于1<<16说明 至少16位不为前导0
+        if (i >= 1 <<  8) { n -=  8; i >>>=  8; }
+        if (i >= 1 <<  4) { n -=  4; i >>>=  4; }
+        if (i >= 1 <<  2) { n -=  2; i >>>=  2; }
+        return n - (i >>> 1);  //>>>1是因为符号位
+    }
+```
+
+jdk8:
+
+```java
+    public static int numberOfLeadingZeros(int i) {
+        // HD, Figure 5-6
+        if (i == 0)
+            return 32;
+        int n = 1;
+        if (i >>> 16 == 0) { n += 16; i <<= 16; }//变成0 就说明前面有这些前导0
+        if (i >>> 24 == 0) { n +=  8; i <<=  8; }
+        if (i >>> 28 == 0) { n +=  4; i <<=  4; }
+        if (i >>> 30 == 0) { n +=  2; i <<=  2; }
+        n -= i >>> 31;
+        return n;
+    }  
+```
+
+## public static int numberOfTrailingZeros(int i)
+
+获取一个数的低位0的个数
+
+源码:
+
+```java
+@HotSpotIntrinsicCandidate
+public static int numberOfTrailingZeros(int i) {
+        // HD, Figure 5-14
+        int y;
+        if (i == 0) return 32;
+        int n = 31;
+        y = i <<16; if (y != 0) { n = n -16; i = y; }
+        y = i << 8; if (y != 0) { n = n - 8; i = y; }
+        y = i << 4; if (y != 0) { n = n - 4; i = y; }
+        y = i << 2; if (y != 0) { n = n - 2; i = y; }
+        return n - ((i << 1) >>> 31);
+    }
+```
+
+## public static int bitCount(int i)
+
+一个数二进制1的个数
+
+源码:
+
+```java
+    @HotSpotIntrinsicCandidate
+    public static int bitCount(int i) {
+        // HD, Figure 5-2
+        i = i - ((i >>> 1) & 0x55555555);
+        i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
+        i = (i + (i >>> 4)) & 0x0f0f0f0f;
+        i = i + (i >>> 8);
+        i = i + (i >>> 16);
+        return i & 0x3f;
+    }
+```
 
 ## 内部类
 
